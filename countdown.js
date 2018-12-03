@@ -98,7 +98,7 @@ function* terms(numbers) {
 
 // Generate all possible calculations that can be made with the given set of
 // numbers as well as its subsets
-function* calculations(numbers) {
+function* countdown(numbers) {
     // Numbers in ascending order
     const sortedNumbers = Array.from(numbers).sort((x, y) => x - y);
     // Filter out same subsets when a number is given twice
@@ -115,24 +115,42 @@ function* calculations(numbers) {
     }
 }
 
+// Export countdown function if used as module
+if (typeof module !== "undefined") {
+    module.exports = countdown;
+}
 
-function termToString(term) {
+
+// Basic operator precedence rules
+const precedence = { "+": 1, "-": 2, "*": 3, "/": 4 };
+
+// Pretty printer
+function termToString(term, parentPrecedence) {
     if (term.op === "#") {
         return term.val.toString();
     }
-    const out = term.args.map(termToString).join(term.op);
-    return term.args.length > 1 ? "(" + out + ")" : out;
+    const out = term.args.map((_) => termToString(_, precedence[term.op])).join(term.op);
+    const parentheses = parentPrecedence != null && parentPrecedence > precedence[term.op];
+    return parentheses ? "(" + out + ")" : out;
 }
 
-const NUMBERS = [2, 7, 9, 10, 25, 50];
-const TARGET = 744;
-
-console.log("Target: " + TARGET);
-console.log("Numbers: " + NUMBERS.join(" "));
-console.log("---");
-for (let calculation of calculations(NUMBERS)) {
-    if (calculation.val === TARGET) {
-        console.log(calculation.val + " = " + termToString(calculation));
+// Command line interface
+if (typeof require !== "undefined" && require.main === module) {
+    const args = process.argv.slice(2).map((_) => parseInt(_, 10));
+    if (args.length < 2 || args.map(isNaN).reduce((p, q) => p || q)) {
+        console.log("countdown.js target number [number...]");
+    } else {
+        const [target, ...numbers] = args;
+        const seen = new Set();
+        for (let calc of countdown(numbers)) {
+            if (calc.val === target) {
+                const repr = termToString(calc);
+                // If some number occurs twice in selection, solutions
+                // involving both numbers will be generated twice
+                if (!seen.has(repr)) console.log(repr);
+                seen.add(repr);
+            }
+        }
     }
 }
 
