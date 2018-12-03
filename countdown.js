@@ -31,9 +31,12 @@ function* selections(n) {
     }
 }
 
-// Generate all unique terms that can be made from numbers. Expects the array
-// of numbers to be sorted. With optimizations in the term generation inspired
-// by http://www.datagenetics.com/blog/august32014/index.html.
+// Generate all terms that can be made from given numbers. Expects the array of
+// numbers to be sorted. With optimizations in the term generation inspired by
+// http://www.datagenetics.com/blog/august32014/index.html.
+// TODO avoid (... * a * ...) / a but not a / a = 1
+// TODO avoid (... + a + ...) - a
+// TODO avoid duplicate terms when number is in selection more than once
 function* terms(numbers) {
     if (numbers.length === 1) {
         yield { op: "#", args: numbers, val: numbers[0] };
@@ -46,30 +49,28 @@ function* terms(numbers) {
         for (let l of terms(ls)) {
             for (let r of terms(rs)) {
                 // Addition: to avoid duplicates, arguments are ordered from
-                // smallest to largest value and merged from only one direction
-                if (l.op !== "+") {
-                    // Merge nested addition into n-ary operator
+                // smallest to largest value, merged into n-ary sums from only
+                // one direction and subtraction is never inluded in a sum
+                // because (a - b) + c = (a + c) - b
+                if (l.op !== "+" && l.op !== "-" && r.op !== "-") {
                     if (r.op === "+") {
                         if (l.val <= r.args[0].val) {
                             yield { op: "+", args: [l, ...r.args], val: l.val + r.val };
                         }
-                    // Avoid duplicates by never including subtraction in
-                    // a sum because (a - b) + c = (a + c) - b
-                    } else if (r.op !== "-" && l.val <= r.val) {
+                    } else if (l.val <= r.val) {
                         yield { op: "+", args: [l, r], val: l.val + r.val };
                     }
                 }
-                // Multiplication: to avoid duplicates, arguments are ordered from
-                // smallest to largest value and merged from only one direction
-                if (l.op !== "*" && l.val !== 1 && r.val !== 1) {
-                    // Merge nested multiplication into n-ary operator
+                // Multiplication: to avoid duplicates, arguments are ordered
+                // from smallest to largest value, merged into n-ary products
+                // from only one direction and division is never inluded in
+                // a sum because (a / b) * c = (a * c) / b
+                if (l.op !== "*" && l.op !== "/" && r.op !== "/" && l.val !== 1 && r.val !== 1) {
                     if (r.op === "*") {
                         if (l.val <= r.args[0].val) {
                             yield { op: "*", args: [l, ...r.args], val: l.val * r.val };
                         }
-                    // Avoid duplicates by never including division in
-                    // a product because (a - b) + c = (a + c) - b
-                    } else if (r.op !== "/" && l.val <= r.val) {
+                    } else if (l.val <= r.val) {
                         yield { op: "*", args: [l, r], val: l.val * r.val };
                     }
                 }
